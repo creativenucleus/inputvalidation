@@ -5,10 +5,11 @@ import(
     "reflect"
     "fmt"
     "strconv"
+    "errors"
 )
 
 
-func Filter(in url.Values, out interface{}) (bool, []string) {
+func Filter(in url.Values, out interface{}) (bool, []string, error) {
     validationErrors := make([]string, 0)
     
     outValues := reflect.ValueOf(out).Elem()
@@ -19,7 +20,6 @@ func Filter(in url.Values, out interface{}) (bool, []string) {
         maxlengthIsSet := false
         var maxlength int
         
-        fieldValue := outValues.Field(i)
         fieldType := outValues.Type().Field(i)
     
         tags := DecodeTag(fieldType.Tag, "inputvalidator")
@@ -51,8 +51,13 @@ func Filter(in url.Values, out interface{}) (bool, []string) {
             continue
         }
 
+        fieldValue := outValues.Field(i)
+        if(!fieldValue.CanSet()) {
+            return false, validationErrors, errors.New("A field cannot be set on this structure")
+        }
+        
         fieldValue.SetString(strValIn)
     }
         
-    return len(validationErrors) == 0, validationErrors
+    return len(validationErrors) == 0, validationErrors, nil
 }
